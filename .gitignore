@@ -1,0 +1,5 @@
+.env
+scripts/app.py
+uv.lock
+corpus/
+.venv/

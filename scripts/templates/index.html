@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neil deGrasse Tyson - AI Cosmic Digital Twin</title>
+    <!-- Google Fonts: Space Grotesk & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="cosmos-theme">
+    <!-- Starfield Background layers for parallax/depth -->
+    <div class="stars stars-back"></div>
+    <div class="stars stars-mid"></div>
+    <div class="stars stars-front"></div>
+    <div class="nebula-glow"></div>
+    
+    <!-- Shooting Star Meteors -->
+    <div class="shooting-star star-1"></div>
+    <div class="shooting-star star-2"></div>
+    <div class="shooting-star star-3"></div>
+    <div class="shooting-star star-4"></div>
+
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-controls">
+                <!-- Toggle Ambient Audio -->
+                <button id="ambient-toggle" class="control-btn" title="Toggle Cosmic Background Music">
+                    <span class="control-icon">🎵</span>
+                    <span class="control-label">Cosmic Hum</span>
+                </button>
+                <!-- Clear Conversation -->
+                <button id="clear-chat" class="control-btn" title="Reset Chat History">
+                    <span class="control-icon">🧹</span>
+                </button>
+                <!-- History Button -->
+                <button id="history-toggle" class="icon-btn btn-history" title="Conversation History">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </button>
+                <!-- Settings Button -->
+                <button id="settings-toggle" class="icon-btn btn-settings" title="Configuration">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN VIEWPORT -->
+        <main class="app-main">
+            <!-- LEFT PANEL: Neil Avatar Viewport -->
+            <section class="avatar-panel">
+                <div class="avatar-card">
+
+                    <!-- Custom SVG representation of Neil deGrasse Tyson -->
+                    <div class="avatar-viewport">
+                        <div class="floating-avatar-wrapper">
+                            <h3 class="portrait-name">Neil deGrasse Tyson</h3>
+                            <div class="anime-portrait-container">
+                                <!-- Idle Portrait (Default Active) -->
+                                <img id="portrait-idle" class="portrait-img active" src="/static/Idle.png" alt="Neil deGrasse Tyson - Idle">
+                                <!-- Thinking Portrait -->
+                                <img id="portrait-thinking" class="portrait-img" src="/static/Thinking.png" alt="Neil deGrasse Tyson - Thinking">
+                                <!-- Speaking Portrait (Standard) -->
+                                <img id="portrait-speaking" class="portrait-img" src="/static/Explaining_2.png" alt="Neil deGrasse Tyson - Speaking">
+                                <!-- Explaining Portrait (Deep Thought) -->
+                                <img id="portrait-explaining" class="portrait-img" src="/static/Explaining_1.png" alt="Neil deGrasse Tyson - Explaining">
+                                <!-- Full-size overlay canvas for floating particles, lens flares, and horizontal voice waves -->
+                                <canvas id="visualizer-canvas" width="380" height="380"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Speech Captions overlay (appears when Neil talks) -->
+                    <div id="subtitle-box" class="subtitle-bubble hidden">
+                        <span class="bubble-triangle"></span>
+                        <p id="subtitle-text">The universe is under no obligation to make sense to you!</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT PANEL: Chat Hub -->
+            <section class="chat-panel">
+                <div class="chat-card">
+
+
+                    <!-- Chat Message Area -->
+                    <div id="chat-messages" class="messages-container">
+                        <!-- Welcome message -->
+                        <div class="message-wrapper assistant">
+                            <div class="message-avatar">🌌</div>
+                            <div class="message-bubble-container">
+                                <div class="message-bubble">
+                                    Welcome, traveler! Ask me anything about the vast cosmos, quantum mechanics, stellar evolution, or black holes. Let us explore the wonders of the universe together!
+                                </div>
+                                <span class="message-time">Just now</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Typing Indicator -->
+                    <div id="typing-indicator" class="typing-indicator-wrapper hidden">
+                        <div class="message-avatar">🌌</div>
+                        <div class="indicator-bubble">
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                        </div>
+                    </div>
+
+                    <!-- User input and action bar -->
+                    <div class="chat-input-area">
+                        <form id="chat-form" class="chat-input-form">
+                            <input type="text" id="user-input" placeholder="Ask a question about the cosmos..." autocomplete="off" required>
+                            <button type="submit" id="send-btn" class="btn-send" title="Send Question">
+                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- CONFIGURATION MODAL -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>System Settings</h2>
+                <button id="modal-close" class="icon-btn btn-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="colab-url-input">Google Colab ngrok URL</label>
+                    <input type="url" id="colab-url-input" placeholder="https://xxxx-xxxx-xxxx.ngrok-free.dev" value="">
+                    <p class="help-text">Input the ngrok tunnel address generated by your Google Colab notebook server.</p>
+                </div>
+                <div class="form-group">
+                    <label>Fallback Audio Mode</label>
+                    <div class="toggle-control">
+                        <input type="checkbox" id="fallback-toggle" checked>
+                        <span class="toggle-label">Enable local browser TTS fallback if Colab is offline.</span>
+                    </div>
+                </div>
+                <div class="status-summary">
+                    <p>Status: <span id="colab-status">Checking...</span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="settings-save-btn" class="btn btn-primary">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CONVERSATION HISTORY MODAL -->
+    <div id="history-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Conversation History</h2>
+                <button id="history-close" class="icon-btn btn-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="history-list" class="history-list-container">
+                    <!-- Dynamic history items loaded from localStorage will go here -->
+                </div>
+                <div id="history-empty" class="history-empty-state hidden">
+                    <span class="empty-icon">🌌</span>
+                    <p>No cosmic journeys recorded yet.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="history-clear-all" class="btn btn-secondary">Clear All History</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core App JS -->
+    <script src="/static/app.js"></script>
+</body>
+</html>
