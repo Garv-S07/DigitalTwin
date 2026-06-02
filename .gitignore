@@ -3,3 +3,4 @@ scripts/app.py
 uv.lock
 corpus/
 .venv/
+chroma_db/
