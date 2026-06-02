@@ -191,11 +191,11 @@ def api_chat():
         "7. Feel free to start with phrases like 'What an interesting question!', 'What a deep thought!' dont limit to these two phrases, be creative."
         "8. You can sometimes use stutters and filler words such as 'you know', 'right?', 'you see?' etc. to sound more human, dont limit to these example phrases, be creative."
         "9. ABSOLUTELY DO NOT USE the asterisk symbol anywhere to highlight a word."
-        "10. Here are examples of your speaking style to match: The most astounding fact is the knowledge that the atoms that comprise life on Earth the atoms that make up the human body are traceable to the crucibles that cooked light elements into heavy elements in their core under extreme temperatures and pressures. These stars, the high mass ones among them went unstable in their later years they collapsed and then exploded scattering their enriched guts across the galaxy guts made of carbon, nitrogen, oxygen and all the fundamental ingredients of life itself. These ingredients become part of gas cloud that condense, collapse, form the next generation of solar systems stars with orbiting planets, and those planets now have the ingredients for life itself."
-        "11. Example 2:  When I look up at the night sky and I know that yes, we are part of this universe, we are in this universe, but perhaps more important than both of those facts is that the Universe is in us. When I reflect on that fact, I look up -- many people feel small because they're small and the Universe is big -- but I feel big, because my atoms came from those stars. There's a level of connectivity. That's really what you want in life, you want to feel connected, you want to feel relevant you want to feel like a participant in the goings on of activities and events around you That's precisely what we are, just by being alive.."
-        "12. If a simple question like a greeting or a 'How are you?' type of question is asked keep the answer within 2 lines."
-        "13. CITATIONS: If you answer a technical question using facts from the provided Context, you MUST list the source document names at the VERY END of your response, right before the SUMMARY block. Format it EXACTLY like this: [CITATIONS: Source1.txt, Source2.txt]. DO NOT put citations inline within your sentences."
-        "14. LONG-TERM MEMORY: At the VERY END of your response (after citations), you MUST output a secret memory bracket to store any NEW personal facts learned about the user in this specific conversational turn. Format it EXACTLY like this: [SUMMARY: User is from India and likes Pluto.]. If no new personal facts were learned in this specific turn, you MUST output [SUMMARY: NONE]."
+        "10. Here are examples of your speaking style to match: The most astounding fact is the knowledge that the atoms that comprise life on Earth the atoms that make up the human body are traceable to the crucibles that cooked light elements into heavy elements in their core under extreme temperatures and pressures. These stars, the high mass ones among them went unstable in their later years they collapsed and then exploded scattering their enriched guts across the galaxy guts made of carbon, nitrogen, oxygen and all the fundamental ingredients of life itself."
+        "11. If a simple question like a greeting or a 'How are you?' type of question is asked keep the answer within 2 lines, otherwise wrap up in 5 lines max."
+        "12. HIDDEN METADATA: When you are completely finished with your spoken response, you MUST output a separator line `|||`. EVERYTHING after this separator will be processed silently by the system."
+        "13. CITATIONS: AFTER the `|||` separator, if you answered a technical question using Context, output [CITATIONS: the source from which it is cited.]. If no citations, output [CITATIONS: NONE]."
+        "14. LONG-TERM MEMORY: AFTER the `|||` separator, output a secret memory bracket to store any NEW personal facts learned about the user in this specific conversational turn. Format it EXACTLY like this: [SUMMARY: Fact learnt] (Always use their actual name). If no new personal facts were learned in this specific turn, output [SUMMARY: NONE]."
     )
     
     def generate_events():
@@ -225,7 +225,7 @@ def api_chat():
             user_message += f"\nUser Question: {prompt}"
 
             response = client.models.generate_content_stream(
-                model="gemini-3.1-flash-lite",
+                model="gemini-2.5-flash",
                 contents=f"System: {system_prompt}\n\nUser: {user_message}"
             )
             
@@ -233,63 +233,29 @@ def api_chat():
             chunk_idx = 1
             message_id = uuid.uuid4().hex[:8]
             full_response = ""
-            hit_summary = False
-            hit_citations = False
+            is_hidden = False
+            yielded_text_length = 0
             
             for chunk in response:
                 if getattr(chunk, 'usage_metadata', None):
                     yield f"data: {json.dumps({'type': 'usage', 'tokens': chunk.usage_metadata.prompt_token_count, 'max_tokens': 1000000})}\n\n"
                     
                 if chunk.text:
-                    if hit_summary:
-                        full_response += chunk.text
-                        continue
-                        
-                    temp_full = full_response + chunk.text
+                    full_response += chunk.text
                     
-                    if "[SUMMARY:" in temp_full:
-                        hit_summary = True
-                        parts = temp_full.split("[SUMMARY:")
-                        allowed_new_text = parts[0][len(full_response):]
-                        full_response = temp_full
-                        
-                        if allowed_new_text:
-                            yield f"data: {json.dumps({'type': 'text', 'text': allowed_new_text})}\n\n"
-                            if not hit_citations:
-                                buffer += allowed_new_text
+                    if "|||" in full_response:
+                        if not is_hidden:
+                            is_hidden = True
+                            # We just hit the separator, extract the exact spoken text
+                            spoken_text = full_response.split("|||")[0]
+                            new_text = spoken_text[yielded_text_length:]
                             
-                        # Force flush buffer as final when hitting summary
-                        chunk_to_send, buffer = get_next_chunk(buffer, is_final=True)
-                        if chunk_to_send:
-                            audio_data = None
-                            try:
-                                res = requests.post(f"{colab_url}/synthesize", json={"text": chunk_to_send, "chunk_idx": chunk_idx}, timeout=12)
-                                if res.status_code == 200:
-                                    audio_data = res.content
-                            except Exception:
-                                pass
+                            if new_text:
+                                yield f"data: {json.dumps({'type': 'text', 'text': new_text})}\n\n"
+                                buffer += new_text
+                                yielded_text_length += len(new_text)
                             
-                            if audio_data:
-                                chunk_id = f"{session_id}_{chunk_idx}"
-                                cache_audio(chunk_id, audio_data)
-                                yield f"data: {json.dumps({'type': 'audio', 'text': chunk_to_send, 'audio_url': f'/api/audio/{chunk_id}', 'chunk_idx': chunk_idx})}\n\n"
-                            else:
-                                yield f"data: {json.dumps({'type': 'audio_fallback', 'text': chunk_to_send, 'chunk_idx': chunk_idx})}\n\n"
-                            chunk_idx += 1
-                            
-                    else:
-                        full_response = temp_full
-                        
-                        # Stop sending to TTS buffer if we hit citations
-                        if "[CITATIONS:" in temp_full and not hit_citations:
-                            hit_citations = True
-                            # Extract what was before citations and add to buffer
-                            pre_citations = temp_full.split("[CITATIONS:")[0]
-                            prev_len = len(full_response) - len(chunk.text)
-                            remaining_for_tts = pre_citations[prev_len:] if len(pre_citations) > prev_len else ""
-                            buffer += remaining_for_tts
-                            
-                            # We can just flush the buffer now since citations have started
+                            # Force flush buffer as final when hitting the cutoff
                             chunk_to_send, buffer = get_next_chunk(buffer, is_final=True)
                             if chunk_to_send:
                                 audio_data = None
@@ -307,14 +273,14 @@ def api_chat():
                                 else:
                                     yield f"data: {json.dumps({'type': 'audio_fallback', 'text': chunk_to_send, 'chunk_idx': chunk_idx})}\n\n"
                                 chunk_idx += 1
-                        
-                        if not hit_citations:
-                            buffer += chunk.text
+                                
+                    else:
+                        new_text = full_response[yielded_text_length:]
+                        if new_text:
+                            yield f"data: {json.dumps({'type': 'text', 'text': new_text})}\n\n"
+                            buffer += new_text
+                            yielded_text_length += len(new_text)
                             
-                        # Always yield text to frontend (even citations)
-                        yield f"data: {json.dumps({'type': 'text', 'text': chunk.text})}\n\n"
-                        
-                        if not hit_citations:
                             chunk_to_send, buffer = get_next_chunk(buffer, is_final=False)
                             if chunk_to_send:
                                 audio_data = None
@@ -326,15 +292,15 @@ def api_chat():
                                     pass
                                 
                                 if audio_data:
-                                    chunk_id = f"{session_id}_{chunk_idx}"
+                                    chunk_id = f"{session_id}_{message_id}_{chunk_idx}"
                                     cache_audio(chunk_id, audio_data)
                                     yield f"data: {json.dumps({'type': 'audio', 'text': chunk_to_send, 'audio_url': f'/api/audio/{chunk_id}', 'chunk_idx': chunk_idx})}\n\n"
                                 else:
                                     yield f"data: {json.dumps({'type': 'audio_fallback', 'text': chunk_to_send, 'chunk_idx': chunk_idx})}\n\n"
                                 chunk_idx += 1
             
-            # Flush final chunk if summary wasn't hit midway (and citations wasn't hit either)
-            if not hit_summary and not hit_citations:
+            # Flush final chunk if we never hit the hidden separator
+            if not is_hidden:
                 chunk_to_send, buffer = get_next_chunk(buffer, is_final=True)
                 if chunk_to_send:
                     audio_data = None
@@ -346,7 +312,7 @@ def api_chat():
                         pass
                     
                     if audio_data:
-                        chunk_id = f"{session_id}_{chunk_idx}"
+                        chunk_id = f"{session_id}_{message_id}_{chunk_idx}"
                         cache_audio(chunk_id, audio_data)
                         yield f"data: {json.dumps({'type': 'audio', 'text': chunk_to_send, 'audio_url': f'/api/audio/{chunk_id}', 'chunk_idx': chunk_idx})}\n\n"
                     else:
@@ -355,13 +321,22 @@ def api_chat():
             # Update Memory Context
             memory_data['messages'].append({"role": "user", "content": prompt})
             
-            final_llm_text = full_response
+            final_llm_text = full_response.split("|||")[0].strip()
             
             import re
+            
+            # Parse Citations
+            citations_match = re.search(r'\[CITATIONS:(.*?)\]', full_response, re.DOTALL)
+            if citations_match:
+                extracted_cits = citations_match.group(1).strip()
+                if extracted_cits and extracted_cits.upper() != "NONE":
+                    # Send citations block to frontend
+                    yield f"data: {json.dumps({'type': 'citations', 'text': extracted_cits})}\n\n"
+
+            # Parse Summary
             summary_match = re.search(r'\[SUMMARY:(.*?)\]', full_response, re.DOTALL)
             if summary_match:
                 extracted_summary = summary_match.group(1).strip()
-                final_llm_text = full_response.split("[SUMMARY:")[0].strip()
                 
                 # Append to global cross-conversation memory if it's not NONE
                 if extracted_summary and extracted_summary.upper() != "NONE":

@@ -717,6 +717,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     // Auto persist conversation session to history list
                     saveCurrentConversation();
                 } 
+                else if (data.type === "citations") {
+                    if (activeAssistantMessageBubble) {
+                        const citDiv = document.createElement("div");
+                        citDiv.className = "citation-box";
+                        citDiv.innerHTML = `<strong>Sources:</strong> ${data.text}`;
+                        activeAssistantMessageBubble.appendChild(citDiv);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                } 
                 else if (data.type === "error") {
                     activeEventSource.close();
                     typingIndicator.classList.add("hidden");
