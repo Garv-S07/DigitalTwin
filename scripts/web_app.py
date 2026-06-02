@@ -231,6 +231,7 @@ def api_chat():
             
             buffer = ""
             chunk_idx = 1
+            message_id = uuid.uuid4().hex[:8]
             full_response = ""
             hit_summary = False
             hit_citations = False
@@ -300,7 +301,7 @@ def api_chat():
                                     pass
                                 
                                 if audio_data:
-                                    chunk_id = f"{session_id}_{chunk_idx}"
+                                    chunk_id = f"{session_id}_{message_id}_{chunk_idx}"
                                     cache_audio(chunk_id, audio_data)
                                     yield f"data: {json.dumps({'type': 'audio', 'text': chunk_to_send, 'audio_url': f'/api/audio/{chunk_id}', 'chunk_idx': chunk_idx})}\n\n"
                                 else:
