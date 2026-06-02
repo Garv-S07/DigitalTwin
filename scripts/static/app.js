@@ -663,7 +663,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Warm up / initialize visualizer context
         initVisualizerAudio();
         
-        const sseUrl = `/api/chat?prompt=${encodeURIComponent(promptText)}&colab_url=${encodeURIComponent(colabUrl)}`;
+        const sseUrl = `/api/chat?prompt=${encodeURIComponent(promptText)}&colab_url=${encodeURIComponent(colabUrl)}&session_id=${encodeURIComponent(currentConversation.id)}`;
         
         activeEventSource = new EventSource(sseUrl);
         
@@ -671,7 +671,10 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 const data = JSON.parse(event.data);
                 
-                if (data.type === "text") {
+                if (data.type === "usage") {
+                    updateContextProgressBar(data.tokens, data.max_tokens);
+                }
+                else if (data.type === "text") {
                     // Create the assistant bubble ONLY on the first token received
                     if (!activeAssistantMessageBubble) {
                         typingIndicator.classList.add("hidden");
@@ -735,6 +738,28 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
+    function updateContextProgressBar(tokens, maxTokens) {
+        const barFill = document.getElementById('context-bar-fill');
+        const numbers = document.getElementById('context-numbers');
+        if (barFill && numbers) {
+            // Calculate percentage, capping at 100% just in case
+            const percent = Math.min((tokens / maxTokens) * 100, 100);
+            barFill.style.width = `${percent}%`;
+            
+            // Format numbers with commas
+            numbers.textContent = `${tokens.toLocaleString()} / ${maxTokens.toLocaleString()}`;
+            
+            // Turn red if getting dangerously close
+            if (percent > 90) {
+                barFill.style.backgroundColor = '#f05454';
+                barFill.style.boxShadow = '0 0 15px rgba(240, 84, 84, 0.8)';
+            } else {
+                barFill.style.backgroundColor = '#00c897';
+                barFill.style.boxShadow = '0 0 10px rgba(0, 200, 151, 0.5)';
+            }
+        }
+    }
+
     /* ==========================================================================
        Event Listeners & Form Controls
        ========================================================================== */
@@ -752,6 +777,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Toggle Ambient Cosmic Sound
     ambientToggle.addEventListener("click", () => {
         toggleAmbientSound();
+    });
+    
+    // Clear Chat / Start New Conversation
+    clearChatBtn.addEventListener("click", () => {
+        if (confirm("Are you sure you want to start a new cosmic journey? This will clear the current screen.")) {
+            startNewConversation();
+        }
     });
 
     // History Persistence and Loading Core Logic
@@ -780,6 +812,9 @@ document.addEventListener("DOMContentLoaded", () => {
             summary: "",
             messages: []
         };
+        
+        // Reset the context visualizer to 0 tokens
+        updateContextProgressBar(0, 1000000);
         
         const welcomeText = "Welcome, traveler! Ask me anything about the vast cosmos, quantum mechanics, stellar evolution, or black holes. Let us explore the wonders of the universe together!";
         appendMessage("assistant", welcomeText);

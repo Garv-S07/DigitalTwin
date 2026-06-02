@@ -1283,3 +1283,10 @@ body {
     color: var(--color-text-primary);
 }
 
+
+/* Context Visualizer */
+.context-visualizer { padding: 15px 20px; border-bottom: 1px solid rgba(110, 68, 255, 0.15); background: rgba(0, 0, 0, 0.2); }
+.context-labels { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 8px; color: #a1a1aa; font-family: 'Space Grotesk', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
+.context-numbers { font-weight: 600; color: #00c897; }
+.context-bar-bg { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; overflow: hidden; }
+.context-bar-fill { height: 100%; width: 0%; background: #00c897; border-radius: 4px; transition: width 0.5s ease-out, background-color 0.5s ease; box-shadow: 0 0 10px rgba(0, 200, 151, 0.5); }
