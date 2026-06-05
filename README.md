@@ -10,7 +10,7 @@ The architecture is built on a Flask backend and a vanilla JavaScript frontend, 
 * **Real-time Streaming & TTS:** Streams the LLM response chunk-by-chunk to the frontend using Server-Sent Events (SSE). The text is simultaneously sent to a remote Colab endpoint for real-time speech synthesis, minimizing audio latency.
 * **Short-Term & Long-Term Memory:**
   * **Short-Term (Session):** Maintains individual conversation histories in JSON format, allowing the model to recall context within a single session.
-  * **Long-Term (Global):** The model automatically extracts new personal facts learned about the user during conversations and appends them to a global memory file. This file is injected into the context window, enabling true cross-conversation memory.
+  * **Long-Term (Global):** The model automatically extracts new personal facts learned about the user during conversations and appends them to a structured `global_memory.json` file. This preserves timelines and session data, and is seamlessly injected into the context window for true cross-conversation memory.
 * **Context Window Visualizer:** The frontend features a dynamic progress bar that extracts precise token usage metadata from the Gemini API, visually displaying the current utilization of the model's context window.
 * **Document Citations:** The model is strictly prompted to cite its source materials when answering technical questions based on the retrieved context. These citations are parsed and displayed in the UI without being spoken aloud by the TTS engine.
 
@@ -28,27 +28,42 @@ The architecture is built on a Flask backend and a vanilla JavaScript frontend, 
    GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
-2. **Install Dependencies:**
-   Install the required Python packages using pip or uv:
+2. **Virtual Environment (Recommended):**
+   It is highly recommended to create and activate a virtual environment before installing dependencies.
+   ```bash
+   python -m venv .venv
+   # On Windows:
+   .venv\Scripts\activate
+   # On macOS/Linux:
+   source .venv/bin/activate
+   ```
+
+3. **Install Dependencies:**
+   Install the required Python packages using pip:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Prepare the Corpus:**
-   Place your raw text documents (e.g., books, articles) into the `corpus/raw/books/` directory.
+4. **Prepare the Corpus:**
+   The data pipeline is configured to process specific file types from distinct directories:
+   - Place your `.txt` files (e.g., raw books) into the `corpus/raw/books/` directory.
+   - Place your `.pdf` files (e.g., research papers) into the `corpus/raw/research/` directory.
 
-4. **Run the Data Pipeline:**
-   Execute the pipeline script to chunk and embed your documents into the local Chroma database.
+5. **Run the Data Pipeline:**
+   Execute the pipeline script to extract text from PDFs, chunk the documents, and embed them into the local Chroma database.
    ```bash
    python scripts/pipeline.py
    ```
 
-5. **Start the Web Server:**
+6. **Start the Web Server:**
    Launch the Flask backend.
    ```bash
    python scripts/web_app.py
    ```
    The application will be accessible at `http://127.0.0.1:5000`.
+
+7. **Configure Text-to-Speech (TTS):**
+   Once the web interface is open, click the **Settings** (gear) icon in the top right. Paste your Google Colab ngrok URL in the configuration modal to enable the real-time voice synthesis feature.
 
 ## Directory Structure
 

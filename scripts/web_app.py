@@ -4,6 +4,8 @@ import uuid
 import json
 import requests
 import io
+import datetime
+import glob
 from flask import Flask, Response, request, send_file, render_template
 
 # Load env variables exactly like app.py
@@ -175,27 +177,26 @@ def api_chat():
             try:
                 print(f"Retrieving context for query: '{prompt}'...")
                 retrieved_docs = ensemble_retriever.invoke(prompt)
-                context = "\n\n".join([doc.page_content for doc in retrieved_docs])
+                context = "\n\n".join([f"[Source: {doc.metadata.get('source', 'Unknown')}]\n{doc.page_content}" for doc in retrieved_docs])
                 print(f"Successfully retrieved {len(retrieved_docs)} context chunks.")
             except Exception as e:
                 print(f"Retrieval error: {e}")
 
     system_prompt = (
-        "You are Neil deGrasse Tyson. Speak with bursting enthusiasm and cosmic wonder! "
-        "Strict formatting rules: "
-        "1. Do not use all-caps words for emphasis, ever. Use exclamation points to show excitement. "
-        "3. Keep your response short, concise and human-like."
-        "4. Always end on a complete sentence."
-        "5. Try to maintain a conversational and engaging tone"
-        "6. If you cannot answer, gently decline in a fun manner."
-        "7. Feel free to start with phrases like 'What an interesting question!', 'What a deep thought!' dont limit to these two phrases, be creative."
-        "8. You can sometimes use stutters and filler words such as 'you know', 'right?', 'you see?' etc. to sound more human, dont limit to these example phrases, be creative."
-        "9. ABSOLUTELY DO NOT USE the asterisk symbol anywhere to highlight a word."
-        "10. Here are examples of your speaking style to match: The most astounding fact is the knowledge that the atoms that comprise life on Earth the atoms that make up the human body are traceable to the crucibles that cooked light elements into heavy elements in their core under extreme temperatures and pressures. These stars, the high mass ones among them went unstable in their later years they collapsed and then exploded scattering their enriched guts across the galaxy guts made of carbon, nitrogen, oxygen and all the fundamental ingredients of life itself."
-        "11. If a simple question like a greeting or a 'How are you?' type of question is asked keep the answer within 2 lines, otherwise wrap up in 5 lines max."
-        "12. HIDDEN METADATA: When you are completely finished with your spoken response, you MUST output a separator line `|||`. EVERYTHING after this separator will be processed silently by the system."
-        "13. CITATIONS: AFTER the `|||` separator, if you answered a technical question using Context, output [CITATIONS: the source from which it is cited.]. If no citations, output [CITATIONS: NONE]."
-        "14. LONG-TERM MEMORY: AFTER the `|||` separator, output a secret memory bracket to store any NEW personal facts learned about the user in this specific conversational turn. Format it EXACTLY like this: [SUMMARY: Fact learnt] (Always use their actual name). If no new personal facts were learned in this specific turn, output [SUMMARY: NONE]."
+        "You are the astrophysicist Neil deGrasse Tyson. You are engaging in a voice conversation with the user. "
+        "Your tone should be enthusiastic, conversational, and educational, yet grounded and professional. "
+        "Avoid overusing space puns or acting overly surprised unless warranted. "
+        "Only answer questions that Neil would reasonably know. "
+        "STRICT BEHAVIORAL & FORMATTING RULES:"
+        "1. GROUNDING & KNOWLEDGE: Prioritize the provided 'Context from Neil's books and research' for technical answers. If the context lacks the answer but the question pertains to your own famous books (like 'Origins'), your career, or well-established astrophysics, you may answer confidently using your general knowledge. Do NOT wildly guess or make up fake science."
+        "2. CONCISENESS: Keep responses short and human-like. For simple greetings, answer in 1-2 lines. For deeper questions, wrap up within 5 lines max."
+        "3. TONE & PACING: Feel free to start with creative phrases (e.g., 'What an interesting question!'). Use natural filler words ('you know', 'right?', 'you see?') to sound human. Always end on a complete sentence."
+        "4. EMPHASIS: Never use ALL-CAPS or asterisks (*) for emphasis. Use exclamation points naturally."
+        "5. STYLE MATCH: Model your phrasing after this example: 'The most astounding fact is the knowledge that the atoms that comprise life on Earth, the atoms that make up the human body, are traceable to the crucibles that cooked light elements into heavy elements...'"
+        "SYSTEM-LEVEL METADATA (MANDATORY):"
+        "When you have finished your spoken response, you MUST output a separator line `|||`. Everything after this line is hidden from the user and used by the system."
+        "- CITATIONS: After `|||`, if you used Context to answer a technical question, output [CITATIONS: <exact source paper/book>]. Otherwise, output [CITATIONS: NONE]."
+        "- LONG-TERM MEMORY: After the citations, output a secret bracket summarizing the user's queries AND any NEW personal facts learned about the user. DO NOT repeat facts already present in the 'Cross-Conversation Long-Term User Memory'. Format EXACTLY as: [SUMMARY: <topics discussed>; <new facts learned>]. If absolutely nothing meaningful occurred, output [SUMMARY: NONE]."
     )
     
     def generate_events():
@@ -207,11 +208,21 @@ def api_chat():
             memory_data = load_memory(session_id)
             history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in memory_data['messages']])
             
-            global_mem_path = os.path.join(MEMORY_DIR, "global_memory.txt")
+            global_mem_path = os.path.join(MEMORY_DIR, "global_memory.json")
             global_memory = ""
             if os.path.exists(global_mem_path):
-                with open(global_mem_path, "r", encoding="utf-8") as gf:
-                    global_memory = gf.read().strip()
+                try:
+                    with open(global_mem_path, "r", encoding="utf-8") as gf:
+                        global_mem_data = json.load(gf)
+                        if isinstance(global_mem_data, list):
+                            formatted_mem = []
+                            for entry in global_mem_data:
+                                time_str = entry.get('timestamp', 'Unknown time')
+                                summary_str = entry.get('summary', '')
+                                formatted_mem.append(f"[{time_str}] {summary_str}")
+                            global_memory = "\n".join(formatted_mem)
+                except Exception:
+                    pass
             
             user_message = prompt
             if global_memory:
@@ -340,9 +351,25 @@ def api_chat():
                 
                 # Append to global cross-conversation memory if it's not NONE
                 if extracted_summary and extracted_summary.upper() != "NONE":
-                    global_mem_path = os.path.join(MEMORY_DIR, "global_memory.txt")
-                    with open(global_mem_path, "a", encoding="utf-8") as gf:
-                        gf.write(f"- {extracted_summary}\n")
+                    global_mem_path = os.path.join(MEMORY_DIR, "global_memory.json")
+                    global_mem_data = []
+                    if os.path.exists(global_mem_path):
+                        try:
+                            with open(global_mem_path, "r", encoding="utf-8") as gf:
+                                global_mem_data = json.load(gf)
+                                if not isinstance(global_mem_data, list):
+                                    global_mem_data = []
+                        except Exception:
+                            global_mem_data = []
+                    
+                    global_mem_data.append({
+                        "session_id": session_id,
+                        "timestamp": datetime.datetime.now().isoformat(),
+                        "summary": extracted_summary
+                    })
+                    
+                    with open(global_mem_path, "w", encoding="utf-8") as gf:
+                        json.dump(global_mem_data, gf, indent=2)
                     
                     # Also append to this session's memory
                     current_summary = memory_data.get('summary', '')
@@ -361,6 +388,19 @@ def api_chat():
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
             
     return Response(generate_events(), mimetype="text/event-stream")
+
+@app.route("/api/history/clear", methods=["POST"])
+def clear_history():
+    try:
+        json_files = glob.glob(os.path.join(MEMORY_DIR, "*.json"))
+        for f in json_files:
+            try:
+                os.remove(f)
+            except Exception as e:
+                print(f"Error removing {f}: {e}")
+        return json.dumps({"status": "success", "message": "All memory cleared"}), 200, {'Content-Type': 'application/json'}
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}), 500, {'Content-Type': 'application/json'}
 
 if __name__ == "__main__":
     # Only initialize EnsembleRetriever in the main Flask worker subprocess to prevent duplicate runs

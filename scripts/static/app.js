@@ -943,9 +943,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     historyClearAll.addEventListener("click", () => {
         if (confirm("Clear all dialogue history permanently? This cannot be undone.")) {
-            localStorage.removeItem("tyson_chat_histories");
-            startNewConversation();
-            renderHistoryList();
+            fetch("/api/history/clear", { method: "POST" })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === "success") {
+                        localStorage.removeItem("tyson_chat_histories");
+                        startNewConversation();
+                        renderHistoryList();
+                    } else {
+                        alert("Error clearing server memory: " + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error("Failed to clear memory", err);
+                    alert("Network error while clearing memory.");
+                });
         }
     });
 
